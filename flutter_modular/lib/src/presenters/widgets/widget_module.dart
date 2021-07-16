@@ -19,6 +19,11 @@ abstract class WidgetModule extends StatelessWidget implements Module {
     return _fakeModule.isReady();
   }
 
+  @override
+  List get instanciatedSingletons => [];
+
+  @visibleForTesting
+  @override
   final List<ModularRoute> routes = const [];
 
   final _FakeModule _fakeModule = _FakeModule();
@@ -58,8 +63,8 @@ abstract class WidgetModule extends StatelessWidget implements Module {
   }
 
   @override
-  void instance() {
-    _fakeModule.instance();
+  void instance(List binds) {
+    _fakeModule.instance(binds);
   }
 
   @override

@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:rxdart/rxdart.dart';
 
 import '../../core/errors/errors.dart';
 import '../../core/interfaces/modular_navigator_interface.dart';
 import '../../core/interfaces/modular_route.dart';
 import '../../core/interfaces/module.dart';
 import '../../core/models/modular_arguments.dart';
+import '../../rxdart/local_rxdart.dart';
 import '../modular_base.dart';
 import '../modular_route_impl.dart';
 import 'custom_navigator.dart';
@@ -25,10 +25,11 @@ class ModularRouterDelegate extends RouterDelegate<ModularRoute>
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   final ModularRouteInformationParser parser;
   final Map<String, Module> injectMap;
+  List<NavigatorObserver> observers = [];
 
   final streamActionQueueController = StreamController<RouterStreamparam>(sync: true);
 
-  ModularRouterDelegate(this.parser, this.injectMap) {
+  ModularRouterDelegate({required this.parser, required this.injectMap}) {
     startListenNavigation();
   }
 
@@ -72,8 +73,14 @@ class ModularRouterDelegate extends RouterDelegate<ModularRoute>
         : CustomNavigator(
             key: navigatorKey,
             pages: _pages,
+            observers: observers,
             onPopPage: _onPopPage,
           );
+  }
+
+  void setObserver(List<NavigatorObserver> navigatorObservers) {
+    observers = navigatorObservers;
+    notifyListeners();
   }
 
   @override
@@ -100,7 +107,7 @@ class ModularRouterDelegate extends RouterDelegate<ModularRoute>
 
       var isDuplicatedPage = duplicatePage.router is! ModularRouteEmpty;
 
-      if (fromModular && (routeIsInModule && !isDuplicatedPage)) {
+      if (fromModular && routeIsInModule && !isDuplicatedPage && !replaceAll) {
         _pages.add(page);
       } else {
         for (var p in _pages) {
@@ -153,7 +160,6 @@ class ModularRouterDelegate extends RouterDelegate<ModularRoute>
     }
 
     if (route.isFirst) {
-      rebuildPages();
       return false;
     }
 
@@ -339,7 +345,14 @@ class ModularRouterDelegate extends RouterDelegate<ModularRoute>
   void pop<T extends Object>([T? result]) => navigator.pop(result);
 
   @override
-  void popUntil(bool Function(Route) predicate) => navigator.popUntil(predicate);
+  void popUntil(bool Function(Route) predicate) {
+    final isFoundedPages = _pages.where((page) => predicate(_CustomRoute(page)));
+    if (isFoundedPages.isEmpty) {
+      navigator.popUntil((route) => route.isFirst);
+    } else {
+      navigator.popUntil(predicate);
+    }
+  }
 
   @override
   Future<T?> pushNamedAndRemoveUntil<T extends Object?>(String newRouteName, bool Function(Route) predicate, {Object? arguments, bool forRoot = false}) {
@@ -385,4 +398,31 @@ class RouterStreamparam {
   final dynamic arguments;
 
   RouterStreamparam(this.path, this.arguments);
+}
+
+class _CustomRoute extends ModalRoute {
+  _CustomRoute(RouteSettings settings) : super(settings: settings);
+
+  @override
+  Color? get barrierColor => throw UnimplementedError();
+
+  @override
+  bool get barrierDismissible => throw UnimplementedError();
+
+  @override
+  String? get barrierLabel => throw UnimplementedError();
+
+  @override
+  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
+    throw UnimplementedError();
+  }
+
+  @override
+  bool get maintainState => throw UnimplementedError();
+
+  @override
+  bool get opaque => throw UnimplementedError();
+
+  @override
+  Duration get transitionDuration => throw UnimplementedError();
 }
